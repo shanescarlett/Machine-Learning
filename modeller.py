@@ -48,3 +48,13 @@ def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample
 			                    callbacks=[checkpoint, tensor_board])
 
 	return history
+
+
+def evaluate_error(model, x_test, y_test):
+	pred = model.predict(x_test, batch_size=32)
+	pred = np.argmax(pred, axis=1)
+	actual = np.argmax(y_test, axis=1)
+	#pred = np.expand_dims(pred, axis=1)  # make same shape as y_test
+	error = np.sum(np.not_equal(pred, actual)) / len(actual)
+
+	return error
