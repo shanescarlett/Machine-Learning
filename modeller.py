@@ -70,3 +70,12 @@ def sliceOutput(count):
 	def fn(layers):
 		return layers[:, :count]
 	return fn
+
+
+def concat_input(indicies):
+	def fn(layers):
+		layer_prev, layer_input = layers
+		return tf.concat([layer_prev, tf.gather(layer_input, indicies, axis=1)], axis=1)
+	return fn
+
+
