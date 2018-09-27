@@ -58,3 +58,9 @@ def evaluate_error(model, x_test, y_test):
 	error = np.sum(np.not_equal(pred, actual)) / len(actual)
 
 	return error
+
+
+def padInput(padCount):
+	def fn(layers):
+		return tf.pad(layers, [[0, 0], [0, padCount]])
+	return fn
