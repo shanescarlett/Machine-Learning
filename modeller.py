@@ -79,3 +79,15 @@ def concat_input(indicies):
 	return fn
 
 
+def stackModels(modelInput, modelA, modelB):
+	outputA = modelA(modelInput)
+	outputB = modelB(outputA)
+	return Model(modelInput, outputB)
+
+
+def getQualifiedLayer(model, modelInput, layerIndex):
+	x = modelInput
+	for c in range(1, layerIndex + 1):
+		x = model.layers[c](x)
+	return x
+
