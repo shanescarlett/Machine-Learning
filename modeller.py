@@ -64,3 +64,9 @@ def padInput(padCount):
 	def fn(layers):
 		return tf.pad(layers, [[0, 0], [0, padCount]])
 	return fn
+
+
+def sliceOutput(count):
+	def fn(layers):
+		return layers[:, :count]
+	return fn
