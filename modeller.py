@@ -27,34 +27,38 @@ from sklearn.ensemble import RandomForestClassifier
 import itertools
 import collections
 
-def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample_weight=None, class_weight=None, validation_data=None, validation_split=0.2):
+
+def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample_weight = None, class_weight = None,
+               validation_data = None, validation_split = 0.2):
 	filepath = 'weights/' + filename
-	checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=0, save_weights_only=True, save_best_only=True,
-	                             mode='auto', period=1)
-	tensor_board = TensorBoard(log_dir='logs/', histogram_freq=0, batch_size=batch_size)
+	checkpoint = ModelCheckpoint(filepath, monitor = 'loss', verbose = 0, save_weights_only = True,
+	                             save_best_only = True,
+	                             mode = 'auto', period = 1)
+	tensor_board = TensorBoard(log_dir = 'logs/', histogram_freq = 0, batch_size = batch_size)
 	if sample_weight is not None:
-		history = model.fit(x=x_train, y=y_train, batch_size=batch_size, epochs=num_epochs, verbose=1,
-	                    callbacks=[checkpoint, tensor_board], validation_split=0.2, sample_weight = sample_weight)
+		history = model.fit(x = x_train, y = y_train, batch_size = batch_size, epochs = num_epochs, verbose = 1,
+		                    callbacks = [checkpoint, tensor_board], validation_split = 0.2,
+		                    sample_weight = sample_weight)
 	elif class_weight is not None:
 		if validation_data is not None:
-			history = model.fit(x_train, y_train, verbose=1, batch_size=batch_size, epochs=num_epochs,
-			                    validation_data=validation_data,
-			                    class_weight=class_weight,
-			                    callbacks=[checkpoint, tensor_board])
+			history = model.fit(x_train, y_train, verbose = 1, batch_size = batch_size, epochs = num_epochs,
+			                    validation_data = validation_data,
+			                    class_weight = class_weight,
+			                    callbacks = [checkpoint, tensor_board])
 		else:
-			history = model.fit(x_train, y_train, verbose=1, batch_size=batch_size, epochs=num_epochs,
-			                    validation_split=validation_split,
-			                    class_weight=class_weight,
-			                    callbacks=[checkpoint, tensor_board])
+			history = model.fit(x_train, y_train, verbose = 1, batch_size = batch_size, epochs = num_epochs,
+			                    validation_split = validation_split,
+			                    class_weight = class_weight,
+			                    callbacks = [checkpoint, tensor_board])
 
 	return history
 
 
 def evaluate_error(model, x_test, y_test):
-	pred = model.predict(x_test, batch_size=32)
-	pred = np.argmax(pred, axis=1)
-	actual = np.argmax(y_test, axis=1)
-	#pred = np.expand_dims(pred, axis=1)  # make same shape as y_test
+	pred = model.predict(x_test, batch_size = 32)
+	pred = np.argmax(pred, axis = 1)
+	actual = np.argmax(y_test, axis = 1)
+	# pred = np.expand_dims(pred, axis=1)  # make same shape as y_test
 	error = np.sum(np.not_equal(pred, actual)) / len(actual)
 
 	return error
@@ -63,19 +67,22 @@ def evaluate_error(model, x_test, y_test):
 def padInput(padCount):
 	def fn(layers):
 		return tf.pad(layers, [[0, 0], [0, padCount]])
+
 	return fn
 
 
 def sliceOutput(count):
 	def fn(layers):
 		return layers[:, :count]
+
 	return fn
 
 
 def concat_input(indicies):
 	def fn(layers):
 		layer_prev, layer_input = layers
-		return tf.concat([layer_prev, tf.gather(layer_input, indicies, axis=1)], axis=1)
+		return tf.concat([layer_prev, tf.gather(layer_input, indicies, axis = 1)], axis = 1)
+
 	return fn
 
 
@@ -90,4 +97,3 @@ def getQualifiedLayer(model, modelInput, layerIndex):
 	for c in range(1, layerIndex + 1):
 		x = model.layers[c](x)
 	return x
-
