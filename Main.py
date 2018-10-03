@@ -35,6 +35,8 @@ import collections
 
 import os
 
+import modeller as mod
+
 
 def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample_weight=None, class_weight=None, validation_data=None, validation_split=0.2):
 	filepath = 'weights/' + filename
@@ -69,7 +71,7 @@ def evaluate_error(model, x_test, y_test):
 	return error
 
 
-def quantifyConfusion(model, xTestData, yTestData, comparison1Index, comparison2Index, comparison1Name='Comparison 1', comparison2Name='Comparison 2'):
+def quantifyConfusion(model, xTestData, yTestData, comparisonIndicies=None, indexNames=None):
 	pred = model.predict(xTestData)
 	pred = np.argmax(pred, axis=1)
 	yTestData = np.argmax(yTestData, axis=1)
@@ -79,43 +81,71 @@ def quantifyConfusion(model, xTestData, yTestData, comparison1Index, comparison2
 	A_fpr = cm[0][1] / np.sum(cm[0])
 	A_fnr = cm[1][0] / np.sum(cm[1])
 
-	# plt.show()
+	print("--------------------------------------------")
+	print("Overall FPR: %.5f" % A_fpr)
+	print("Overall FNR: %.5f" % A_fnr)
+	print("--------------------------------------------")
+	if comparisonIndicies is not None:
+		print("Index\tFPR\t\t\tFNR\t\t\tUnfairness")
+		fprs = []
+		fnrs = []
+		for index in comparisonIndicies:
+			cm = confusion_matrix(yTestData[xTestData[:, index] == 1], pred[xTestData[:, index] == 1], labels = [0, 1])
+			fpr = cm[0][1] / np.sum(cm[0])
+			fnr = cm[1][0] / np.sum(cm[1])
+			fprs.append(fpr)
+			fnrs.append(fnr)
 
+		for i in range(len(fprs)):
+			fpr = fprs[i]
+			fnr = fnrs[i]
+			avg = (sum(fprs) - fpr)/(len(fprs) - 1)
+			unfairness = avg-fpr
+			if indexNames is None:
+				print("%i\t\t%.2f%%\t\t%.2f%%\t\t%.2f%%" % (comparisonIndicies[i], fpr*100, fnr*100, unfairness*100))
+			else:
+				print("%s\t\t%.2f%%\t\t%.2f%%\t\t%.2f%%" % (indexNames[i][:6], fpr*100, fnr*100, unfairness*100))
+
+		print("--------------------------------------------")
 	# plt.figure(figsize=(10,4))
-	cm = confusion_matrix(yTestData[xTestData[:, comparison1Index] == 1], pred[xTestData[:, comparison1Index] == 1])
-	# plt.subplot(1,2,1)
-	# plot_confusion_matrix(cm,classes=['0','1'], title='Female')
-
-	FPR1 = cm[0][1] / np.sum(cm[0])
-	FNR1 = cm[1][0] / np.sum(cm[1])
-	discrimination1First = np.sum(cm[:, 1]) / np.sum(cm)
-	discrimination1Second = np.sum(cm[:, 0]) / np.sum(cm)
-
-	# plt.subplot(1,2,2)
-	cm = confusion_matrix(yTestData[xTestData[:, comparison2Index] == 1], pred[xTestData[:, comparison2Index] == 1])
-	# plot_confusion_matrix(cm,classes=['0','1'], title='Male')
-
-	M_fpr = cm[0][1] / np.sum(cm[0])
-	M_fnr = cm[1][0] / np.sum(cm[1])
-	M_dis = np.sum(cm[:, 1]) / np.sum(cm)
-	M_dis2 = np.sum(cm[:, 0]) / np.sum(cm)
-
-	falsePositiveRate = np.abs(FPR1 - M_fpr)
-	falseNegativeRate = np.abs(FNR1 - M_fnr)
-
-	unfairness = falsePositiveRate
-
-	discrimination = np.abs(M_dis - discrimination1First)
-	discrimination2 = np.abs(M_dis2 - discrimination1Second)
-
-	#print("%05d iterations..." % (k + 1), normal, sam_weight)
-	#print(model.evaluate(x_test, to_categorical(y_test), verbose=0))
-	print("FPR_all/M/F/W/B: %.5f, %.5f, %.5f" % (A_fpr, M_fpr, FPR1))
-	print("FNR_all/M/F/W/B: %.5f, %.5f, %.5f" % (A_fnr, M_fnr, FNR1))
-	print("Unfairness: %.5f" % unfairness)
-	print("Discrimination: %.5f" % discrimination)
-	print("Discrimination2: %.5f" % discrimination2)
-	print("\n")
+	# cm = confusion_matrix(yTestData[xTestData[:, comparison1Index] == 1], pred[xTestData[:, comparison1Index] == 1])
+	# # plt.subplot(1,2,1)
+	# # plot_confusion_matrix(cm,classes=['0','1'], title='Female')
+	#
+	# FPR1 = cm[0][1] / np.sum(cm[0])
+	# FNR1 = cm[1][0] / np.sum(cm[1])
+	# discrimination1First = np.sum(cm[:, 1]) / np.sum(cm)
+	# discrimination1Second = np.sum(cm[:, 0]) / np.sum(cm)
+	#
+	# # plt.subplot(1,2,2)
+	# cm = confusion_matrix(yTestData[xTestData[:, comparison2Index] == 1], pred[xTestData[:, comparison2Index] == 1])
+	# # plot_confusion_matrix(cm,classes=['0','1'], title='Male')
+	#
+	# M_fpr = cm[0][1] / np.sum(cm[0])
+	# M_fnr = cm[1][0] / np.sum(cm[1])
+	# M_dis = np.sum(cm[:, 1]) / np.sum(cm)
+	# M_dis2 = np.sum(cm[:, 0]) / np.sum(cm)
+	#
+	# falsePositiveRate = np.abs(FPR1 - M_fpr)
+	# falseNegativeRate = np.abs(FNR1 - M_fnr)
+	#
+	# unfairness = falsePositiveRate
+	#
+	# discrimination = np.abs(M_dis - discrimination1First)
+	# discrimination2 = np.abs(M_dis2 - discrimination1Second)
+	#
+	# #print("%05d iterations..." % (k + 1), normal, sam_weight)
+	# #print(model.evaluate(x_test, to_categorical(y_test), verbose=0))
+	# print("FPR_all/M/F/W/B: %.5f, %.5f, %.5f" % (A_fpr, M_fpr, FPR1))
+	# print("FNR_all/M/F/W/B: %.5f, %.5f, %.5f" % (A_fnr, M_fnr, FNR1))
+	# print("Unfairness: %.5f" % unfairness)
+	# print("Discrimination: %.5f" % discrimination)
+	# print("Discrimination2: %.5f" % discrimination2)
+	# print("\n")
+	# for index in comparisonIndicies:
+	# 	cm = confusion_matrix(yTestData[xTestData[:, index] == 1], pred[xTestData[:, index] == 1])
+	# 	fprs.append(cm[0][1] / np.sum(cm[0]))
+	# 	fnrs.append(cm[1][0] / np.sum(cm[1]))
 
 
 def sampling32(args):
@@ -221,7 +251,7 @@ def getM1Model(modelInput):
 	n_class = 2
 
 	y_inp = Input((n_class,))
-	x = Lambda(padInput(11))(modelInput)
+	x = Lambda(mod.padInput(11))(modelInput)
 	x = Reshape((21, 20, 1))(x)
 	x = Conv2D(8, (3, 3), padding='same', activation='relu')(x)
 	x = Dropout(0.5)(x)
@@ -258,7 +288,7 @@ def getM1Model(modelInput):
 	x = Dropout(0.5)(x)
 	x = Conv2D(1, (3, 3), padding='same', activation='relu')(x)
 	x = Flatten(name='recon')(x)
-	dec_out = Lambda(sliceOutput(409))(x)
+	dec_out = Lambda(mod.sliceOutput(409))(x)
 
 	encoder = Model(modelInput, z_mean, name='encoder')
 	encoder.trainable = False
@@ -293,18 +323,6 @@ def getM2Model(modelInput, protectedIndices):
 	return trainer, model
 
 
-def padInput(padCount):
-	def fn(layers):
-		return tf.pad(layers, [[0, 0], [0, padCount]])
-	return fn
-
-
-def sliceOutput(count):
-	def fn(layers):
-		return layers[:, :count]
-	return fn
-
-
 def concat_input(indicies):
 	def fn(layers):
 		layer_prev, layer_input = layers
@@ -333,16 +351,16 @@ def model2loss(strength=1.):
 	penalties = tf.constant(penalties, dtype=tf.float32)
 
 	def fn(y_true, ll):
-		X_sex = ll[:, 2:]
+		x_protected = ll[:, 2:]
 		y_pred = ll[:, :2]
 
 		base = keras.losses.categorical_crossentropy(y_true, y_pred)
 
-		X_sex = tf.argmax(X_sex, axis=1)
+		x_protected = tf.argmax(x_protected, axis=1)
 		y_pred = tf.argmax(y_pred, axis=1)
 		y_true = tf.argmax(y_true, axis=1)
 
-		penalty_indices = tf.stack([X_sex, y_true, y_pred], axis=1)
+		penalty_indices = tf.stack([x_protected, y_true, y_pred], axis=1)
 		penalty = tf.gather_nd(penalties, penalty_indices)
 
 		return base * penalty
@@ -499,6 +517,11 @@ def setTrainability(model, trainable):
 		layer.trainable = trainable
 
 
+def unique(seq):
+	seen = set()
+	return [x for x in seq if x not in seen and not seen.add(x)]
+
+
 def main():
 	loadedData = getData('C:/Users/Main/Documents/Data/Census Income/census-income.categorical.csv', trainTestIndex=199522)
 
@@ -515,19 +538,43 @@ def main():
 	x_test = scaler.transform(x_test)
 	print(x_train.shape, x_train.shape)
 	print(x_test.shape, x_test.shape)
-	indicies_protected = list(columns.index(x) for x in ["sex==Female", "sex==Male"])
+	featureMap = [i.split('==', 1)[0] for i in columns]
+	featureNames = [i.split('==', 1)[-1] for i in columns]
+	features = unique(featureMap)
+	featureStartIndices = []
+	featureEndIndices = []
+	for feature in features:
+		thisFeatureStartColumnIndex = featureMap.index(feature)
+		thisFeatureEndColumnIndex = len(featureMap) - 1 - featureMap[::-1].index(feature)
+		protectedIndices = list(range(thisFeatureStartColumnIndex, thisFeatureEndColumnIndex + 1))
+		#protectedIndices = [103, 104]
+		protectedNames = [featureNames[i] for i in protectedIndices]
+
+		if len(protectedIndices) > 1:
+			modelInput = Input(x_train.shape[1:])
+			modelClassWeight = {0: 1., 1: y_train.shape[0] / np.sum(np.argmax(y_train, axis = 1))}
+			M2Trainer, M2Model = getM2Model(modelInput, protectedIndices = protectedIndices)
+			trainModel(model = M2Trainer, num_epochs = 1, filename = 'model_m2.weights', x_train = x_train,
+		           y_train = y_train, batch_size = 2048, class_weight = modelClassWeight, validation_split = 0.1)
+			M2Trainer.load_weights('weights/model_m2.weights')
+			print('Error for model 2: ' + repr(evaluate_error(M2Model, x_test, y_test)))
+			quantifyConfusion(M2Model, x_test, y_test, protectedIndices, indexNames = protectedNames)
+		#featureStartIndices.append(featureMap.index(feature))
+		#featureEndIndices.append(len(featureMap) - 1 - featureMap[::-1].index(feature))
+
+	# indicies_protected = list(columns.index(x) for x in ["sex==Female", "sex==Male"])
 
 	# Feature Indices
-	maleColumnIndex = 105 - 1
-	femaleColumnIndex = 104 - 1
-	black = 91 - 1
-	white = 93 - 1
+	# maleColumnIndex = 105 - 1
+	# femaleColumnIndex = 104 - 1
+	# black = 91 - 1
+	# white = 93 - 1
 
-	modelInput = Input(x_train.shape[1:])
+	# modelInput = Input(x_train.shape[1:])
 	#sample_weight = compute_sample_weight("balanced", np.concatenate([np.expand_dims(x_train[:, femaleColumnIndex], axis=1)
 	#			                                                                 , np.expand_dims(y_train, axis=1)], axis=1))
-	model1ClassWeight = {0: 1., 1: y_train.shape[0] / np.sum(np.argmax(y_train, axis=1))}
-	idx = 199522
+	# model1ClassWeight = {0: 1., 1: y_train.shape[0] / np.sum(np.argmax(y_train, axis=1))}
+	# idx = 199522
 	# model2Data = data.values[:, 1:]
 	# model2X = model2Data[:, :-2]
 	# model2X = MinMaxScaler().fit_transform(model2X)
@@ -535,60 +582,64 @@ def main():
 	# model2XTrain, model2YTrain = model2X[:idx], model2Y[:idx]
 	# model2XTest, model2YTest = model2X[idx:], model2Y[idx:]
 	# model2Input = Input((model2XTrain.shape[1],))
-	classes = range(y_train.shape[1])
-	model2ClassWeight = sklearn.utils.class_weight.compute_class_weight("balanced", classes, np.argmax(y_train, axis=1))
-	model2ClassWeight = dict(zip(classes, model2ClassWeight))
-
-	x_train_tmp = x_train.copy()
-	x_test_tmp = x_test.copy()
-	x_train_tmp[:, femaleColumnIndex:femaleColumnIndex+2] = 0
-	y_label = x_train[:, femaleColumnIndex:femaleColumnIndex+2]
-	y_label_te = x_test[:, femaleColumnIndex:femaleColumnIndex+2]
+	# classes = range(y_train.shape[1])
+	# model2ClassWeight = sklearn.utils.class_weight.compute_class_weight("balanced", classes, np.argmax(y_train, axis=1))
+	# model2ClassWeight = dict(zip(classes, model2ClassWeight))
+	#
+	# x_train_tmp = x_train.copy()
+	# x_test_tmp = x_test.copy()
+	# x_train_tmp[:, femaleColumnIndex:femaleColumnIndex+2] = 0
+	# y_label = x_train[:, femaleColumnIndex:femaleColumnIndex+2]
+	# y_label_te = x_test[:, femaleColumnIndex:femaleColumnIndex+2]
 
 	#baseModel = getBaseModel(inp)
 	#autoencoderModel = getAutoencoderModel(inp)
-	M1Trainer, M1Encoder = getM1Model(modelInput)
-	M2Trainer, M2Model = getM2Model(modelInput, list([femaleColumnIndex, maleColumnIndex]))
-
-	retrainModels = False
+	# M1Trainer, M1Encoder = getM1Model(modelInput)
+	# M2Trainer, M2Model = getM2Model(modelInput, protectedIndices = indicies_protected)
+	#
+	# retrainModel1 = False
 	#Train models
-	if(retrainModels):
+	# if(retrainModel1):
 		#trainModel(model=baseModel, num_epochs=100, filename='model_base.weights', x_train=x_train, y_train=to_categorical(y_train), batch_size=2048, class_weight=class_weight)
 		#trainModel(model=baseModel, num_epochs=100, filename='model_autoencoder.weights', x_train=x_train, y_train=to_categorical(y_train), batch_size=2048, class_weight=class_weight)
-		trainModel(model=M1Trainer, num_epochs=20, filename='model_m1.weights', x_train=[x_train_tmp, y_label], y_train=[x_train_tmp, y_label], batch_size=2048, class_weight=model1ClassWeight, validation_data = [[x_test_tmp,y_label_te], [x_test_tmp, y_label_te]])
-		trainModel(model=M2Trainer, num_epochs=50, filename='model_m2.weights', x_train=x_train, y_train=y_train, batch_size=2048, class_weight=model1ClassWeight, validation_split=0.1)
+	# 	trainModel(model=M1Trainer, num_epochs=20, filename='model_m1.weights', x_train=[x_train_tmp, y_label], y_train=[x_train_tmp, y_label], batch_size=2048, class_weight=model1ClassWeight, validation_data = [[x_test_tmp,y_label_te], [x_test_tmp, y_label_te]])
+	#
+	# retrainModel2 = False
+	# if(retrainModel2):
+	# 	trainModel(model = M2Trainer, num_epochs = 50, filename = 'model_m2.weights', x_train = x_train,
+	# 	           y_train = y_train, batch_size = 2048, class_weight = model1ClassWeight, validation_split = 0.1)
+
 	#Load models
 	#baseModel.load_weights('weights/model_base.weights')
 	#autoencoderModel.load_weights('weights/model_autoencoder.weights')
-	M1Trainer.load_weights('weights/model_m1.weights')
+	# M1Trainer.load_weights('weights/model_m1.weights')
 	#M1Trainer.summary()
-	M2Trainer.load_weights('weights/model_m2.weights')
+	# M2Trainer.load_weights('weights/model_m2.weights')
 	#M2Trainer.summary()
 
 	#Fix Encoder Module
-	encoderTrainValues = M1Encoder.predict(x_train)
-	encoderTestValues = M1Encoder.predict(x_test)
-	encoderTrainValues = moveValuesToMean(encoderTrainValues, y_label)
-	encoderTestValues = moveValuesToMean(encoderTestValues, y_label_te)
-	n_dim = 64
-	inp = Input((n_dim,))
-	#encoderOutput = getQualifiedLayer(M1Encoder, modelInput, len(M1Encoder.layers) - 1)
-	x = Dropout(0.5)(inp)
-	x = Dense(32, activation='relu')(x)
-	out = Dense(2, activation='softmax')(x)
-
-	M1Classifier = Model(inp, out, name='m1classifier')
-	M1Classifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+	# encoderTrainValues = M1Encoder.predict(x_train)
+	# encoderTestValues = M1Encoder.predict(x_test)
+	# encoderTrainValues = moveValuesToMean(encoderTrainValues, y_label)
+	# encoderTestValues = moveValuesToMean(encoderTestValues, y_label_te)
+	# n_dim = 64
+	# inp = Input((n_dim,))
+	# x = Dropout(0.5)(inp)
+	# x = Dense(32, activation='relu')(x)
+	# out = Dense(2, activation='softmax')(x)
+	#
+	# M1Classifier = Model(inp, out, name='m1classifier')
+	# M1Classifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
 	#trainModel(model=M1Classifier, num_epochs=100, filename='model_autoencoder.weights', x_train=encoderTrainValues, y_train=to_categorical(np.argmax(y_train, axis=1)), batch_size=2048, class_weight=model1ClassWeight, validation_split=0.1)
 	#M1Classifier.summary()
-	M1Classifier.load_weights('weights/model_autoencoder.weights')
-	setTrainability(M1Classifier, False)
-	M1Model = stackModels(modelInput, M1Encoder, M1Classifier)
-	M1Model.trainable = False
-	M2Model.trainable = False
-	setTrainability(M2Model, False)
-	M1Model.summary()
-	M2Model.summary()
+	# M1Classifier.load_weights('weights/model_autoencoder.weights')
+	# setTrainability(M1Classifier, False)
+	# M1Model = stackModels(modelInput, M1Encoder, M1Classifier)
+	# M1Model.trainable = False
+	# M2Model.trainable = False
+	# setTrainability(M2Model, False)
+	# M1Model.summary()
+	# M2Model.summary()
 	#M1Model.summary()
 	#quantifyConfusion(baseModel, x_test, y_test)
 	#quantifyConfusion(autoencoderModel, x_test, y_test)
@@ -600,39 +651,39 @@ def main():
 	#encoder.summary()
 
 	#---------------------------------------
-	models = [M1Model, M2Model]
-	averagingEnsemble = getAveragingEnsemble(models, modelInput)
+	# models = [M1Model, M2Model]
+	# averagingEnsemble = getAveragingEnsemble(models, modelInput)
+	#
+	# print('Error for model 1: ' + repr(evaluate_error(M1Model, x_test, y_test)))
+	# quantifyConfusion(M1Model, x_test, y_test, femaleColumnIndex, maleColumnIndex)
+	#
+	# outputConcatEnsemble = getLastLayerConcatenatedEnsemble(models, modelInput)
+	# trainOutputConcatEnsemble = False
+	# if trainOutputConcatEnsemble:
+	# 	outputConcatEnsemble.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+	# 	trainModel(model=outputConcatEnsemble, x_train=x_train, y_train=y_train, num_epochs=20, batch_size=2048, class_weight=model1ClassWeight, validation_split=0.1, filename='model_output_concat_ensemble.weights')
+	# outputConcatEnsemble.load_weights('weights/model_output_concat_ensemble.weights')
+	#
+	# middleConcatEnsemble = getMiddleConcatenatedEnsemble(models, modelInput)
+	# trainMiddleConcatEnsemble = True
+	# if trainMiddleConcatEnsemble:
+	# 	middleConcatEnsemble.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+	# 	trainModel(model=middleConcatEnsemble, x_train=x_train, y_train=y_train, num_epochs=20, batch_size=2048,
+	# 	           class_weight=model1ClassWeight, validation_split=0.1,
+	# 	           filename='model_middle_concat_ensemble.weights')
+	# middleConcatEnsemble.load_weights('weights/model_middle_concat_ensemble.weights')
 
-	print('Error for model 1: ' + repr(evaluate_error(M1Model, x_test, y_test)))
-	quantifyConfusion(M1Model, x_test, y_test, femaleColumnIndex, maleColumnIndex)
 
-	outputConcatEnsemble = getLastLayerConcatenatedEnsemble(models, modelInput)
-	trainOutputConcatEnsemble = False
-	if trainOutputConcatEnsemble:
-		outputConcatEnsemble.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
-		trainModel(model=outputConcatEnsemble, x_train=x_train, y_train=y_train, num_epochs=20, batch_size=2048, class_weight=model1ClassWeight, validation_split=0.1, filename='model_output_concat_ensemble.weights')
-	outputConcatEnsemble.load_weights('weights/model_output_concat_ensemble.weights')
-
-	middleConcatEnsemble = getMiddleConcatenatedEnsemble(models, modelInput)
-	trainMiddleConcatEnsemble = True
-	if trainMiddleConcatEnsemble:
-		middleConcatEnsemble.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
-		trainModel(model=middleConcatEnsemble, x_train=x_train, y_train=y_train, num_epochs=20, batch_size=2048,
-		           class_weight=model1ClassWeight, validation_split=0.1,
-		           filename='model_middle_concat_ensemble.weights')
-	middleConcatEnsemble.load_weights('weights/model_middle_concat_ensemble.weights')
-
-
-	print('Error for model 1: ' + repr(evaluate_error(M1Model, x_test, y_test)))
-	quantifyConfusion(M1Model, x_test, y_test, femaleColumnIndex, maleColumnIndex)
-	print('Error for model 2: ' + repr(evaluate_error(M2Model, x_test, y_test)))
-	quantifyConfusion(M2Model, x_test, y_test, femaleColumnIndex, maleColumnIndex)
-	print('Error for simple ensemble: ' + repr(evaluate_error(averagingEnsemble, x_test, y_test)))
-	quantifyConfusion(averagingEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
-	print('Error for last layer ensemble: ' + repr(evaluate_error(outputConcatEnsemble, x_test, y_test)))
-	quantifyConfusion(outputConcatEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
-	print('Error for middle layer ensemble: ' + repr(evaluate_error(middleConcatEnsemble, x_test, y_test)))
-	quantifyConfusion(middleConcatEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
+	# print('Error for model 1: ' + repr(evaluate_error(M1Model, x_test, y_test)))
+	# quantifyConfusion(M1Model, x_test, y_test, femaleColumnIndex, maleColumnIndex)
+	# print('Error for model 2: ' + repr(evaluate_error(M2Model, x_test, y_test)))
+	# quantifyConfusion(M2Model, x_test, y_test, indicies_protected)
+	# print('Error for simple ensemble: ' + repr(evaluate_error(averagingEnsemble, x_test, y_test)))
+	# quantifyConfusion(averagingEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
+	# print('Error for last layer ensemble: ' + repr(evaluate_error(outputConcatEnsemble, x_test, y_test)))
+	# quantifyConfusion(outputConcatEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
+	# print('Error for middle layer ensemble: ' + repr(evaluate_error(middleConcatEnsemble, x_test, y_test)))
+	# quantifyConfusion(middleConcatEnsemble, x_test, y_test, femaleColumnIndex, maleColumnIndex)
 	# print('end')
 	#---------------------------------------
 
