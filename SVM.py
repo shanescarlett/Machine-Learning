@@ -59,8 +59,42 @@ def train_svm_classifer(features, labels, model_output_path):
 	print(classification_report(y_test, y_predict))
 
 
+def readData(path, trainTestSplit=0.5, trainTestIndex=None):
+	import pandas as pd
+	import numpy as np
+	data = pd.read_csv(path, skiprows=0)
+	dataShape = data.values.shape
+
+	if trainTestIndex is not None:
+		test_idx = trainTestIndex
+	else:
+		test_idx = int(round(dataShape[0] * trainTestSplit))
+
+	X_train_data = np.zeros((data.values[:test_idx].shape[0], 420))
+	X_test_data = np.zeros((data.values[test_idx:].shape[0], 420))
+
+	X_train_data = data.values[:test_idx, :]
+	X_test_data = data.values[test_idx:, :]
+	Y_train_data = data.values[:test_idx, -2:]
+	Y_test_data = data.values[test_idx:, -2:]
+	Y_train_data = np.argmax(Y_train_data, axis=1)
+	Y_test_data = np.argmax(Y_test_data, axis=1)
+
+	print(X_train_data.shape, Y_train_data.shape)
+	print(X_test_data.shape, Y_test_data.shape)
+	result = dict({'data': data,
+	                'test_index': test_idx,
+	                'x_train': X_train_data,
+	                'y_train': Y_train_data,
+	                'x_test': X_test_data,
+	                'y_test': Y_test_data,
+	               'columns': list(data.columns[1:])})
+	return result
+
+
 def main():
 	print('hi')
+	data = readData('C:/Users/Main/Documents/Data/Bearing/1st_test/1st_test/2003.10.22.12.06.24', trainTestSplit = 0.66)
 
 
 main()
