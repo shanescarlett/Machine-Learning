@@ -57,3 +57,12 @@ def train_svm_classifer(features, labels, model_output_path):
 
 	print("\nClassification report:")
 	print(classification_report(y_test, y_predict))
+
+
+def main():
+	print('hi')
+
+
+main()
+print('End')
+
