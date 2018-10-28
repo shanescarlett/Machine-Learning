@@ -59,10 +59,10 @@ def train_svm_classifer(features, labels, model_output_path):
 	print(classification_report(y_test, y_predict))
 
 
-def readData(path, trainTestSplit=0.5, trainTestIndex=None):
+def readData(path, trainTestSplit=0.5, trainTestIndex=None, delimiter=','):
 	import pandas as pd
 	import numpy as np
-	data = pd.read_csv(path, skiprows=0)
+	data = pd.read_csv(path, skiprows=0, delimiter = delimiter)
 	dataShape = data.values.shape
 
 	if trainTestIndex is not None:
@@ -94,8 +94,13 @@ def readData(path, trainTestSplit=0.5, trainTestIndex=None):
 
 def main():
 	print('hi')
-	data = readData('C:/Users/Main/Documents/Data/Bearing/1st_test/1st_test/2003.10.22.12.06.24', trainTestSplit = 0.66)
-
+	loadedData = readData('C:/Users/Main/Documents/Data/Bearing/1st_test/1st_test/2003.10.22.12.06.24', trainTestSplit = 0.66, delimiter = '\t')
+	x_train = loadedData['x_train']
+	x_test = loadedData['x_test']
+	scaler = sklearn.preprocessing.MinMaxScaler()
+	print(scaler.fit(x_train))
+	x_train = scaler.transform(x_train)
+	x_test = scaler.transform(x_test)
 
 main()
 print('End')
